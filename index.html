@@ -12,105 +12,159 @@
     <button type="button" onclick="uploadFile()">Upload</button>
   </form>
   <div id="columns"></div>
-  <button type="button" onclick="cleanseFile()">Cleanse</button>
+  <button type="button" onclick="previewChanges()">Preview Changes</button>
   <div id="preview"></div>
-<button type="button" onclick="finalizeCleansing()">Finalize Cleansing</button>
-
+  <button type="button" onclick="finalizeCleansing()">Finalize Cleansing</button>
 
   <script>
     let selectedFile = null; // Store the uploaded file
 
-    // Upload the CSV file and retrieve headers
+    // Function to handle file upload
+    async function uploadFile() {
+      const fileInput = document.getElementById('file');
+      if (!fileInput.files.length) {
+        alert('Please select a CSV file to upload.');
+        return;
+      }
+
+      selectedFile = fileInput.files[0]; // Save the selected file
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const { headers } = await response.json();
+          displayColumns(headers);
+        } else {
+          alert('Error uploading file. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+      }
+    }
+
+    // Function to display columns and allow rule selection
+    function displayColumns(headers) {
+      const container = document.getElementById('columns');
+      container.innerHTML = ''; // Clear any existing content
+
+      headers.forEach((header) => {
+        const columnDiv = document.createElement('div');
+        columnDiv.innerHTML = `
+          <label>${header}</label>
+          <select name="${header}">
+            <option value="">No Action</option>
+            <option value="trim">Trim Whitespace</option>
+            <option value="removeSpaces">Remove Extra Spaces</option>
+            <option value="capitalizeWords">Capitalize Each Word</option>
+            <option value="emailFix">Fix Emails</option>
+            <option value="phoneFormat">Format Phone Numbers</option>
+            <option value="standardizeDate">Standardize Date</option>
+          </select>
+        `;
+        container.appendChild(columnDiv);
+      });
+    }
+
+    // Function to preview changes
     async function previewChanges() {
-  if (!selectedFile) {
-    alert('Please upload a CSV file first.');
-    return;
-  }
+      if (!selectedFile) {
+        alert('Please upload a CSV file first.');
+        return;
+      }
 
-  const formData = new FormData();
-  formData.append('file', selectedFile);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-  // Collect rules from the UI
-  const rules = {};
-  document.querySelectorAll('select').forEach((select) => {
-    if (select.value) {
-      rules[select.name] = select.value;
+      // Collect rules from the UI
+      const rules = {};
+      document.querySelectorAll('select').forEach((select) => {
+        if (select.value) {
+          rules[select.name] = select.value;
+        }
+      });
+
+      formData.append('rules', JSON.stringify(rules));
+
+      try {
+        const response = await fetch('/preview', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const previewData = await response.json();
+          displayPreview(previewData);
+        } else {
+          alert('Error generating preview. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error generating preview:', error);
+      }
     }
-  });
 
-  formData.append('rules', JSON.stringify(rules));
+    // Function to display preview of changes
+    function displayPreview(previewData) {
+      const container = document.getElementById('preview');
+      container.innerHTML = ''; // Clear existing content
 
-  try {
-    const response = await fetch('/preview', {
-      method: 'POST',
-      body: formData,
-    });
+      const table = document.createElement('table');
+      table.border = '1';
 
-    if (response.ok) {
-      const previewData = await response.json();
-      displayPreview(previewData);
-    } else {
-      alert('Error generating preview. Please try again.');
+      // Table headers
+      const headers = Object.keys(previewData[0].original);
+      const headerRow = document.createElement('tr');
+      headers.forEach((header) => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+
+      // Table rows with before/after data
+      previewData.forEach((row, rowIndex) => {
+        const originalRow = document.createElement('tr');
+        headers.forEach((header) => {
+          const td = document.createElement('td');
+          td.textContent = row.original[header] || '';
+          originalRow.appendChild(td);
+        });
+
+        const previewRow = document.createElement('tr');
+        headers.forEach((header) => {
+          const td = document.createElement('td');
+          const previewValue = row.preview[header] || '';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = true; // Default to accepting changes
+          checkbox.dataset.row = rowIndex;
+          checkbox.dataset.column = header;
+
+          const span = document.createElement('span');
+          span.textContent = previewValue;
+
+          td.appendChild(span);
+          td.appendChild(checkbox);
+
+          previewRow.appendChild(td);
+        });
+
+        table.appendChild(originalRow);
+        table.appendChild(previewRow);
+      });
+
+      container.appendChild(table);
     }
-  } catch (error) {
-    console.error('Error generating preview:', error);
-  }
-}
 
-function displayPreview(previewData) {
-  const container = document.getElementById('preview');
-  container.innerHTML = ''; // Clear existing content
-
-  const table = document.createElement('table');
-  table.border = '1';
-
-  // Table headers
-  const headers = Object.keys(previewData[0].original);
-  const headerRow = document.createElement('tr');
-  headers.forEach((header) => {
-    const th = document.createElement('th');
-    th.textContent = header;
-    headerRow.appendChild(th);
-  });
-  table.appendChild(headerRow);
-
-  // Table rows with before/after data
-  previewData.forEach((row, rowIndex) => {
-    const originalRow = document.createElement('tr');
-    headers.forEach((header) => {
-      const td = document.createElement('td');
-      td.textContent = row.original[header] || '';
-      originalRow.appendChild(td);
-    });
-
-    const previewRow = document.createElement('tr');
-    headers.forEach((header) => {
-      const td = document.createElement('td');
-      const previewValue = row.preview[header] || '';
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = true; // Default to accepting changes
-      checkbox.dataset.row = rowIndex;
-      checkbox.dataset.column = header;
-
-      const span = document.createElement('span');
-      span.textContent = previewValue;
-
-      td.appendChild(span);
-      td.appendChild(checkbox);
-
-      previewRow.appendChild(td);
-    });
-
-    table.appendChild(originalRow);
-    table.appendChild(previewRow);
-  });
-
-  container.appendChild(table);
-}
-
-async function finalizeCleansing() {
+    // Function to finalize cleansing
+    async function finalizeCleansing() {
   if (!selectedFile) {
     alert('Please upload a CSV file first.');
     return;
@@ -123,10 +177,15 @@ async function finalizeCleansing() {
   const approvedChanges = [];
   document.querySelectorAll('#preview input[type="checkbox"]').forEach((checkbox) => {
     if (checkbox.checked) {
-      approvedChanges.push({
-        row: checkbox.dataset.row,
-        column: checkbox.dataset.column,
-      });
+      const row = checkbox.dataset.row;
+      const column = checkbox.dataset.column;
+
+      // Find the rule for the column based on dropdown selection
+      const rule = document.querySelector(`select[name="${column}"]`).value;
+
+      if (rule) {
+        approvedChanges.push({ row, column, rule });
+      }
     }
   });
 
@@ -157,3 +216,6 @@ async function finalizeCleansing() {
   }
 }
 
+  </script>
+</body>
+</html>
