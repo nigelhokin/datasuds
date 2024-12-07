@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV Cleaner</title>
+</head>
+<body>
+  <h1>CSV Cleaner</h1>
+  <form id="uploadForm">
+    <input type="file" id="file" name="file" accept=".csv" required />
+    <button type="button" onclick="uploadFile()">Upload</button>
+  </form>
+  <div id="columns"></div>
+  <button type="button" onclick="cleanseFile()">Cleanse</button>
+  <div id="preview"></div>
+<button type="button" onclick="finalizeCleansing()">Finalize Cleansing</button>
+
+
+  <script>
+    let selectedFile = null; // Store the uploaded file
+
+    // Upload the CSV file and retrieve headers
+    async function previewChanges() {
+  if (!selectedFile) {
+    alert('Please upload a CSV file first.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  // Collect rules from the UI
+  const rules = {};
+  document.querySelectorAll('select').forEach((select) => {
+    if (select.value) {
+      rules[select.name] = select.value;
+    }
+  });
+
+  formData.append('rules', JSON.stringify(rules));
+
+  try {
+    const response = await fetch('/preview', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const previewData = await response.json();
+      displayPreview(previewData);
+    } else {
+      alert('Error generating preview. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error generating preview:', error);
+  }
+}
+
+function displayPreview(previewData) {
+  const container = document.getElementById('preview');
+  container.innerHTML = ''; // Clear existing content
+
+  const table = document.createElement('table');
+  table.border = '1';
+
+  // Table headers
+  const headers = Object.keys(previewData[0].original);
+  const headerRow = document.createElement('tr');
+  headers.forEach((header) => {
+    const th = document.createElement('th');
+    th.textContent = header;
+    headerRow.appendChild(th);
+  });
+  table.appendChild(headerRow);
+
+  // Table rows with before/after data
+  previewData.forEach((row, rowIndex) => {
+    const originalRow = document.createElement('tr');
+    headers.forEach((header) => {
+      const td = document.createElement('td');
+      td.textContent = row.original[header] || '';
+      originalRow.appendChild(td);
+    });
+
+    const previewRow = document.createElement('tr');
+    headers.forEach((header) => {
+      const td = document.createElement('td');
+      const previewValue = row.preview[header] || '';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true; // Default to accepting changes
+      checkbox.dataset.row = rowIndex;
+      checkbox.dataset.column = header;
+
+      const span = document.createElement('span');
+      span.textContent = previewValue;
+
+      td.appendChild(span);
+      td.appendChild(checkbox);
+
+      previewRow.appendChild(td);
+    });
+
+    table.appendChild(originalRow);
+    table.appendChild(previewRow);
+  });
+
+  container.appendChild(table);
+}
+
+async function finalizeCleansing() {
+  if (!selectedFile) {
+    alert('Please upload a CSV file first.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  // Collect user-approved changes
+  const approvedChanges = [];
+  document.querySelectorAll('#preview input[type="checkbox"]').forEach((checkbox) => {
+    if (checkbox.checked) {
+      approvedChanges.push({
+        row: checkbox.dataset.row,
+        column: checkbox.dataset.column,
+      });
+    }
+  });
+
+  console.log('Approved changes:', approvedChanges); // Debugging: Log approved changes
+
+  formData.append('approvedChanges', JSON.stringify(approvedChanges));
+
+  try {
+    const response = await fetch('/cleanse', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'final_cleaned_data.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('Error finalizing cleansing. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error finalizing cleansing:', error);
+  }
+}
+
