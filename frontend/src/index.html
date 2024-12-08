@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataSuds</title>
+  <title>DataSuds - Clean Your Data</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,17 +11,25 @@
     <h1>DataSuds - Clean Your Data</h1>
   </header>
   <main>
+    <!-- File Upload Section -->
     <section id="upload-section">
       <h2>Upload Your File</h2>
       <form id="uploadForm">
         <input type="file" id="fileInput" name="file" accept=".csv" required>
-        <button type="button" id="uploadButton">Upload</button>
+        <button type="submit" id="uploadButton">Upload</button>
       </form>
-      <div id="columnsPreview"></div>
+      <div id="upload-status"></div>
     </section>
 
+    <!-- Data Preview and Cleansing Rules -->
+    <section id="preview-section" style="display: none;">
+      <h2>Data Preview and Cleansing Rules</h2>
+      <div id="previewContainer"></div>
+    </section>
+
+    <!-- Final Cleansing Section -->
     <section id="cleanse-section" style="display: none;">
-      <h2>Preview Changes</h2>
+      <h2>Finalize Cleansing</h2>
       <div id="preview"></div>
       <button type="button" id="finalizeButton">Finalize Cleansing</button>
     </section>
