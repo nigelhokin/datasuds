@@ -1,11 +1,11 @@
 {
-  "name": "csv-cleaner",
+  "name": "datasuds",
   "version": "1.0.0",
   "description": "A tool for cleansing CSV files with AI-powered enhancements.",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"No tests yet\""
   },
   "keywords": [
@@ -17,11 +17,12 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.9",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.1",
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.1.7"
   }
 }
