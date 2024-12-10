@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('fileInput');
   const previewContainer = document.getElementById('previewContainer');
   const previewSection = document.getElementById('preview-section');
+  const clearButton = document.getElementById('clearFile'); // Get the clear button
 
   uploadForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -43,45 +44,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  function displayPreview(headers, rows) {
-    // Rules Mapping: Map frontend-friendly labels to backend rule keys
-    const rules = {
-      "No Action": "",
-      "Capitalize": "capitalizeWords",
-      "Fix Email": "emailFix",
-      "Remove Spaces": "removeSpaces",
-    };
+    // Clear file input and preview
+    clearButton.addEventListener('click', () => {
+      fileInput.value = ''; // Clear the file input
+      previewContainer.innerHTML = ''; // Clear the preview container
+      previewSection.style.display = 'none'; // Hide the preview section
+      console.log('File input and preview cleared.'); // Debugging log
+    });
 
+  function displayPreview(headers, rows) {
     previewContainer.innerHTML = ''; // Clear any existing preview content
 
-    console.log('Displaying preview for headers and rows:', { headers, rows }); // Debugging
-
-    // Create table for headers and rows
     const table = document.createElement('table');
+    table.id = 'previewTable'; // Set an ID for DataTables
+    table.className = 'display'; // DataTables class for styling
 
     // Add table headers
+    const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
+
+    
     headers.forEach((header) => {
       const th = document.createElement('th');
       th.textContent = header;
       headerRow.appendChild(th);
     });
-    table.appendChild(headerRow);
-
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
     // Add table rows
-    rows.forEach((row, rowIndex) => {
+    const tbody = document.createElement('tbody');
+    rows.forEach((row) => {
       const tr = document.createElement('tr');
       headers.forEach((header) => {
         const td = document.createElement('td');
-        td.textContent = row[header] || ''; // Show cell value or empty string
-        td.dataset.row = rowIndex;
-        td.dataset.column = header;
+        td.textContent = row[header] || '';
         tr.appendChild(td);
       });
-      table.appendChild(tr);
+      tbody.appendChild(tr);
     });
+    table.appendChild(tbody);
 
     previewContainer.appendChild(table);
+
+    // Initialize DataTables after adding the table to the DOM
+    $(document).ready(() => {
+      $('#previewTable').DataTable({
+        paging: true,
+        searching: true,
+        info: true,
+        ordering: true,
+        columnDefs: [
+          { orderable: false, targets: [] }, // Customize non-orderable columns if needed
+        ],
+      });
+    });
 
     // Add cleansing rules dropdowns below the table
     const ruleContainer = document.createElement('div');
@@ -93,6 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
       select.name = header;
 
       // Populate dropdown using the rules mapping
+      const rules = {
+        "No Action": "",
+        "Capitalize First Letter": "capitalizeWords",
+        "Fix Email": "emailFix",
+        "Remove Spaces": "removeSpaces",
+        "Force Uppercase": "upperCase",
+        "Force Lowercase": "lowerCase",
+      };
+
       Object.entries(rules).forEach(([label, value]) => {
         const option = document.createElement('option');
         option.value = value; // Backend rule key
@@ -156,3 +182,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+
